@@ -1,4 +1,4 @@
-<img src="./mmdit.png" width="400px"></img>
+<img src="./mmdit.png" width="300px"></img>
 
 ## MMDiT (wip)
 
@@ -7,6 +7,47 @@ Implementation of a single layer of the MMDiT, proposed by Esser et al. in <a hr
 Besides a straight reproduction, will also generalize to > 2 modalities, as I can envision an MMDiT for images, audio, and text.
 
 Will also offer an improvised variant of the attention that adaptively selects the weights to use through learned gating.
+
+## Install
+
+```bash
+$ pip install mmdit
+```
+
+## Usage
+
+```python
+import torch
+from mmdit import MMDiTBlock
+
+# define mm dit block
+
+block = MMDiTBlock(
+    dim_joint_attn = 512,
+    dim_cond = 256,
+    dim_text = 768,
+    dim_image = 512,
+    qk_rmsnorm = True
+)
+
+# mock inputs
+
+time_cond = torch.randn(1, 256)
+
+text_tokens = torch.randn(1, 512, 768)
+text_mask = torch.ones((1, 512)).bool()
+
+image_tokens = torch.randn(1, 1024, 512)
+
+# single block forward
+
+text_tokens_next, image_tokens_next = block(
+    time_cond = time_cond,
+    text_tokens = text_tokens,
+    text_mask = text_mask,
+    image_tokens = image_tokens
+)
+```
 
 ## Citations
 

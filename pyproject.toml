@@ -1,0 +1,51 @@
+[project]
+name = "mmdit"
+version = "0.0.1"
+description = "MMDiT"
+authors = [
+    { name = "Phil Wang", email = "lucidrains@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">= 3.9"
+license = { file = "LICENSE" }
+keywords = [
+    'artificial intelligence',
+    'deep learning',
+    'multi-modal transformer',
+    'attention mechanism'
+]
+
+classifiers=[
+    'Development Status :: 4 - Beta',
+    'Intended Audience :: Developers',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'License :: OSI Approved :: MIT License',
+    'Programming Language :: Python :: 3.9',
+]
+
+dependencies = [
+    "einops>=0.8.0",
+    "torch>=2.0",
+    "x-transformers>=1.28.5"
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/mmdit/"
+Repository = "https://github.com/lucidrains/mmdit"
+
+[project.optional-dependencies]
+examples = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["mmdit"]
