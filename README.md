@@ -4,6 +4,10 @@
 
 Implementation of a single layer of the MMDiT, proposed by Esser et al. in <a href="https://arxiv.org/abs/2403.03206">Stable Diffusion 3</a>, in Pytorch and Jax
 
+Besides a straight reproduction, will also generalize to > 2 modalities, as I can envision an MMDiT for images, audio, and text.
+
+Will also offer an improvised variant of the attention that adaptively selects the weights to use through learned gating.
+
 ## Citations
 
 ```bibtex
