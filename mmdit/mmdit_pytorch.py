@@ -171,15 +171,28 @@ class MMDiTBlock(Module):
         self.has_cond = has_cond
 
         if has_cond:
-            self.cond_dims = (
-                *((dim_text,) * 6),
-                *((dim_image,) * 6)
+            dim_gammas = (
+                *((dim_text,) * 4),
+                *((dim_image,) * 4)
             )
+
+            dim_betas = (
+                *((dim_text,) * 2),
+                *((dim_image,) * 2),
+            )
+
+            self.cond_dims = (*dim_gammas, *dim_betas)
+
+            to_cond_linear = nn.Linear(dim_cond, sum(self.cond_dims))
 
             self.to_cond = nn.Sequential(
                 nn.SiLU(),
-                nn.Linear(dim_cond, sum(self.cond_dims))
+                to_cond_linear
             )
+
+            nn.init.zeros_(to_cond_linear.weight)
+            nn.init.zeros_(to_cond_linear.bias)
+            nn.init.constant_(to_cond_linear.bias[:sum(dim_gammas)], 1.)
 
         # handle adaptive norms
 
@@ -215,17 +228,17 @@ class MMDiTBlock(Module):
         if self.has_cond:
             (
                 text_pre_attn_gamma,
-                text_pre_attn_beta,
                 text_post_attn_gamma,
                 text_pre_ff_gamma,
-                text_pre_ff_beta,
                 text_post_ff_gamma,
                 image_pre_attn_gamma,
-                image_pre_attn_beta,
                 image_post_attn_gamma,
                 image_pre_ff_gamma,
-                image_pre_ff_beta,
                 image_post_ff_gamma,
+                text_pre_attn_beta,
+                text_pre_ff_beta,
+                image_pre_attn_beta,
+                image_pre_ff_beta,
             ) = self.to_cond(time_cond).split(self.cond_dims, dim = -1)
 
         # handle attn adaptive layernorm
