@@ -38,7 +38,7 @@ class Attention(Module):
         self,
         *,
         dim,
-        dim_inputs: Tuple[int],
+        dim_inputs: Tuple[int, ...],
         dim_head = 64,
         heads = 8,
         qk_rmsnorm = False,
