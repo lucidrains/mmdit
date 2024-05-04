@@ -42,6 +42,7 @@ class Attention(Module):
         dim_head = 64,
         heads = 8,
         qk_rmsnorm = False,
+        flash = False,
         attend_kwargs: dict = dict()
     ):
         super().__init__()
@@ -63,7 +64,10 @@ class Attention(Module):
 
         self.split_heads = Rearrange('b n (qkv h d) -> qkv b h n d', h = heads, qkv = 3)
 
-        self.attend = Attend(**attend_kwargs)
+        self.attend = Attend(
+            flash = flash,
+            **attend_kwargs
+        )
 
         self.merge_heads = Rearrange('b h n d -> b n (h d)')
 
@@ -156,6 +160,7 @@ class MMDiTBlock(Module):
         dim_head = 64,
         heads = 8,
         qk_rmsnorm = False,
+        flash_attn = False,
         ff_kwargs: dict = dict()
     ):
         super().__init__()
@@ -190,7 +195,8 @@ class MMDiTBlock(Module):
             dim = dim_joint_attn,
             dim_inputs = (dim_text, dim_image),
             dim_head = dim_head,
-            heads = heads
+            heads = heads,
+            flash = flash_attn
         )
 
         self.text_ff = FeedForward(dim_text, **ff_kwargs)
