@@ -1,3 +1,5 @@
+<img src="./mmdit.png" width="400px"></img>
+
 ## MMDiT (wip)
 
 Implementation of a single layer of the MMDiT, proposed by Esser et al. in <a href="https://arxiv.org/abs/2403.03206">Stable Diffusion 3</a>, in Pytorch and Jax
