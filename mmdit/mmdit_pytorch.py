@@ -225,7 +225,7 @@ class MMDiTBlock(Module):
         image_tokens,
         text_mask = None,
         time_cond = None,
-        feedforward_text_tokens = True
+        skip_feedforward_text_tokens = True
     ):
         assert not (exists(time_cond) ^ self.has_cond), 'time condition must be passed in if dim_cond is set at init. it should not be passed in if not set'
 
@@ -302,7 +302,7 @@ class MMDiTBlock(Module):
 
         # early return, for last block in mmdit
 
-        if not feedforward_text_tokens:
+        if skip_feedforward_text_tokens:
             return text_tokens, image_tokens
 
         # text feedforward
@@ -345,7 +345,7 @@ class MMDiT(Module):
         image_tokens,
         text_mask = None,
         time_cond = None,
-        omit_last_text_feedforward = True
+        should_skip_last_feedforward = True
     ):
         for ind, block in enumerate(self.blocks):
             is_last = ind == (len(self.blocks) - 1)
@@ -355,7 +355,7 @@ class MMDiT(Module):
                 text_tokens = text_tokens,
                 image_tokens = image_tokens,
                 text_mask = text_mask,
-                feedforward_text_tokens = not is_last and omit_last_text_feedforward
+                skip_feedforward_text_tokens = is_last and should_skip_last_feedforward
             )
 
         return text_tokens, image_tokens
