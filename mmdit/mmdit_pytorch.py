@@ -93,6 +93,8 @@ class JointAttention(Module):
 
         assert len(inputs) == self.num_inputs
 
+        masks = default(masks, (None,) * self.num_inputs)
+
         # project each modality separately for qkv
         # also handle masks, assume None means attend to all tokens
 

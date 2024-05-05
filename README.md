@@ -49,6 +49,40 @@ text_tokens_next, image_tokens_next = block(
 )
 ```
 
+A generalized version can be used as so
+
+```python
+import torch
+from mmdit.mmdit_generalized_pytorch import MMDiT
+
+mmdit = MMDiT(
+    depth = 2, 
+    dim_modalities = (768, 512, 384),
+    dim_joint_attn = 512,
+    dim_cond = 256,
+    qk_rmsnorm = True
+)
+
+# mock inputs
+
+time_cond = torch.randn(1, 256)
+
+text_tokens = torch.randn(1, 512, 768)
+text_mask = torch.ones((1, 512)).bool()
+
+video_tokens = torch.randn(1, 1024, 512)
+
+audio_tokens = torch.randn(1, 256, 384)
+
+# forward
+
+text_tokens, video_tokens, audio_tokens = mmdit(
+    modality_tokens = (text_tokens, video_tokens, audio_tokens),
+    modality_masks = (text_mask, None, None),
+    time_cond = time_cond,
+)
+```
+
 ## Citations
 
 ```bibtex
