@@ -1,4 +1,5 @@
-from typing import Optional, Tuple
+from __future__ import annotations
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -86,7 +87,7 @@ class JointAttention(Module):
     def forward(
         self,
         inputs: Tuple[Tensor],
-        masks: Optional[Tuple[Optional[Tensor]]] = None
+        masks: Tuple[Tensor | None] | None = None
     ):
 
         device = self.dummy.device

@@ -1,4 +1,5 @@
-from typing import Optional, Tuple
+from __future__ import annotations
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -124,7 +125,7 @@ class MMDiTBlock(Module):
         self,
         *,
         modality_tokens: Tuple[Tensor, ...],
-        modality_masks: Optional[Tuple[Optional[Tensor], ...]] = None,
+        modality_masks: Tuple[Tensor | None, ...] | None = None,
         time_cond = None
     ):
         assert len(modality_tokens) == self.num_modalities
@@ -197,7 +198,7 @@ class MMDiT(Module):
         self,
         *,
         modality_tokens: Tuple[Tensor, ...],
-        modality_masks: Optional[Tuple[Optional[Tensor], ...]] = None,
+        modality_masks: Tuple[Tensor | None, ...] | None = None,
         time_cond = None
     ):
         for block in self.blocks:
