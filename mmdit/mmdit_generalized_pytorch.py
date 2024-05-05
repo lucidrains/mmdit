@@ -48,7 +48,9 @@ class AdaptiveLayerNorm(Module):
             )
 
             nn.init.zeros_(cond_linear.weight)
-            nn.init.constant_(cond_linear.bias, 1.)
+
+            nn.init.constant_(cond_linear.bias[:dim], 1.)
+            nn.init.zeros_(cond_linear.bias[dim:])
 
     def forward(
         self,
@@ -90,7 +92,7 @@ class MMDiTBlock(Module):
         self.has_cond = has_cond
 
         if has_cond:
-            cond_linear = nn.Linear(dim_cond, sum(dim_modalities) * self.num_modalities)
+            cond_linear = nn.Linear(dim_cond, sum(dim_modalities) * 2)
 
             self.to_post_branch_gammas = nn.Sequential(
                 nn.SiLU(),
