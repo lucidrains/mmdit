@@ -221,7 +221,8 @@ class MMDiTBlock(Module):
         text_tokens,
         image_tokens,
         text_mask = None,
-        time_cond = None
+        time_cond = None,
+        feedforward_text_tokens = True
     ):
         assert not (exists(time_cond) ^ self.has_cond), 'time condition must be passed in if dim_cond is set at init. it should not be passed in if not set'
 
@@ -283,23 +284,38 @@ class MMDiTBlock(Module):
             text_tokens = text_tokens * text_pre_ff_gamma + text_pre_ff_beta
             image_tokens = image_tokens * image_pre_ff_gamma + image_pre_ff_beta
 
-        # feedforward
+        # images feedforward
 
-        text_tokens = self.text_ff(text_tokens)
         image_tokens = self.image_ff(image_tokens)
 
-        # condition feedforward output
+        # images condition feedforward output
+
+        if self.has_cond:
+            image_tokens = image_tokens * image_post_ff_gamma
+
+        # images feedforward residual
+
+        image_tokens = image_tokens + image_tokens_residual
+
+        # early return, for last block in mmdit
+
+        if not feedforward_text_tokens:
+            return text_tokens, image_tokens
+
+        # text feedforward
+
+        text_tokens = self.text_ff(text_tokens)
+
+        # text condition feedforward output
 
         if self.has_cond:
             text_tokens = text_tokens * text_post_ff_gamma
-            image_tokens = image_tokens * image_post_ff_gamma
 
-        # add feedforward residual
+        # text feedforward residual
 
         text_tokens = text_tokens + text_tokens_residual
-        image_tokens = image_tokens + image_tokens_residual
 
-        # return output of block
+        # return
 
         return text_tokens, image_tokens
 
@@ -325,14 +341,18 @@ class MMDiT(Module):
         text_tokens,
         image_tokens,
         text_mask = None,
-        time_cond = None
+        time_cond = None,
+        omit_last_text_feedforward = True
     ):
-        for block in self.blocks:
+        for ind, block in enumerate(self.blocks):
+            is_last = ind == (len(self.blocks) - 1)
+
             text_tokens, image_tokens = block(
                 time_cond = time_cond,
                 text_tokens = text_tokens,
                 image_tokens = image_tokens,
-                text_mask = text_mask
+                text_mask = text_mask,
+                feedforward_text_tokens = not is_last and omit_last_text_feedforward
             )
 
         return text_tokens, image_tokens
