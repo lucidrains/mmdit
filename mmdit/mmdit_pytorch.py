@@ -33,7 +33,7 @@ class MultiHeadRMSNorm(Module):
 
 # attention
 
-class Attention(Module):
+class JointAttention(Module):
     def __init__(
         self,
         *,
@@ -204,7 +204,7 @@ class MMDiTBlock(Module):
 
         # attention and feedforward
 
-        self.attn = Attention(
+        self.joint_attn = JointAttention(
             dim = dim_joint_attn,
             dim_inputs = (dim_text, dim_image),
             dim_head = dim_head,
@@ -255,7 +255,7 @@ class MMDiTBlock(Module):
 
         # attention
 
-        text_tokens, image_tokens = self.attn(
+        text_tokens, image_tokens = self.joint_attn(
             inputs = (text_tokens, image_tokens),
             masks = (text_mask, None)
         )
