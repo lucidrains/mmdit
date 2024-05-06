@@ -7,7 +7,7 @@ from torch import Tensor
 import torch.nn.functional as F
 from torch.nn import Module, ModuleList
 
-from einops import rearrange, pack, unpack
+from einops import rearrange, repeat, pack, unpack
 from einops.layers.torch import Rearrange
 
 from x_transformers.attend import Attend
@@ -329,13 +329,24 @@ class MMDiT(Module):
         self,
         *,
         depth,
+        dim_image,
+        num_register_tokens = 0,
         **block_kwargs
     ):
         super().__init__()
+
+        self.has_register_tokens = num_register_tokens > 0
+        self.register_tokens = nn.Parameter(torch.zeros(num_register_tokens, dim_image))
+        nn.init.normal_(self.register_tokens, std = 0.02)
+
         self.blocks = ModuleList([])
 
         for _ in range(depth):
-            block = MMDiTBlock(**block_kwargs)
+            block = MMDiTBlock(
+                dim_image = dim_image,
+                **block_kwargs
+            )
+
             self.blocks.append(block)
 
     def forward(
@@ -347,6 +358,11 @@ class MMDiT(Module):
         time_cond = None,
         should_skip_last_feedforward = True
     ):
+
+        if self.has_register_tokens:
+            register_tokens = repeat(self.register_tokens, 'n d -> b n d', b = image_tokens.shape[0])
+            image_tokens, packed_shape = pack([register_tokens, image_tokens], 'b * d')
+
         for ind, block in enumerate(self.blocks):
             is_last = ind == (len(self.blocks) - 1)
 
@@ -357,5 +373,8 @@ class MMDiT(Module):
                 text_mask = text_mask,
                 skip_feedforward_text_tokens = is_last and should_skip_last_feedforward
             )
+
+        if self.has_register_tokens:
+            _, image_tokens = unpack(image_tokens, packed_shape, 'b * d')
 
         return text_tokens, image_tokens
