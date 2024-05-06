@@ -11,7 +11,10 @@ from einops import rearrange, repeat, pack, unpack
 from einops.layers.torch import Rearrange
 
 from x_transformers.attend import Attend
-from x_transformers import FeedForward
+from x_transformers import (
+    RMSNorm,
+    FeedForward
+)
 
 # helpers
 
@@ -331,6 +334,7 @@ class MMDiT(Module):
         depth,
         dim_image,
         num_register_tokens = 0,
+        final_norm = True,
         **block_kwargs
     ):
         super().__init__()
@@ -348,6 +352,8 @@ class MMDiT(Module):
             )
 
             self.blocks.append(block)
+
+        self.norm = RMSNorm(dim_image) if final_norm else nn.Identity()
 
     def forward(
         self,
@@ -376,5 +382,7 @@ class MMDiT(Module):
 
         if self.has_register_tokens:
             _, image_tokens = unpack(image_tokens, packed_shape, 'b * d')
+
+        image_tokens = self.norm(image_tokens)
 
         return text_tokens, image_tokens

@@ -10,7 +10,10 @@ from torch.nn import Module, ModuleList
 from einops import rearrange, pack, unpack
 from einops.layers.torch import Rearrange
 
-from x_transformers import FeedForward
+from x_transformers import (
+    RMSNorm,
+    FeedForward
+)
 
 from mmdit.mmdit_pytorch import (
     JointAttention
@@ -190,11 +193,16 @@ class MMDiT(Module):
         self,
         *,
         depth,
+        dim_modalities,
+        final_norms = True,
         **block_kwargs
     ):
         super().__init__()
-        blocks = [MMDiTBlock(**block_kwargs) for _ in range(depth)]
+        blocks = [MMDiTBlock(dim_modalities = dim_modalities, **block_kwargs) for _ in range(depth)]
         self.blocks = ModuleList(blocks)
+
+        norms = [RMSNorm(dim) for dim in dim_modalities]
+        self.norms = ModuleList(norms)
 
     def forward(
         self,
@@ -210,4 +218,6 @@ class MMDiT(Module):
                 modality_masks = modality_masks
             )
 
-        return modality_tokens
+        modality_tokens = [norm(tokens) for tokens, norm in zip(modality_tokens, self.norms)]
+
+        return tuple(modality_tokens)
