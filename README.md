@@ -6,7 +6,7 @@ Implementation of a single layer of the MMDiT, proposed by Esser et al. in <a hr
 
 Besides a straight reproduction, will also generalize to > 2 modalities, as I can envision an MMDiT for images, audio, and text.
 
-Will also offer an improvised variant of the attention that adaptively selects the weights to use through learned gating.
+Will also offer an <a href="https://github.com/lucidrains/mmdit/blob/main/mmdit/adaptive_attention.py">improvised variant of self attention</a> that adaptively selects the weights to use through learned gating. This idea came from adaptive convolutions applied by Kang et al. for GigaGAN.
 
 ## Install
 
