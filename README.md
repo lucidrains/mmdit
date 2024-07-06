@@ -32,12 +32,12 @@ block = MMDiTBlock(
 
 # mock inputs
 
-time_cond = torch.randn(1, 256)
+time_cond = torch.randn(2, 256)
 
-text_tokens = torch.randn(1, 512, 768)
-text_mask = torch.ones((1, 512)).bool()
+text_tokens = torch.randn(2, 512, 768)
+text_mask = torch.ones((2, 512)).bool()
 
-image_tokens = torch.randn(1, 1024, 512)
+image_tokens = torch.randn(2, 1024, 512)
 
 # single block forward
 
@@ -65,14 +65,14 @@ mmdit = MMDiT(
 
 # mock inputs
 
-time_cond = torch.randn(1, 256)
+time_cond = torch.randn(2, 256)
 
-text_tokens = torch.randn(1, 512, 768)
-text_mask = torch.ones((1, 512)).bool()
+text_tokens = torch.randn(2, 512, 768)
+text_mask = torch.ones((2, 512)).bool()
 
-video_tokens = torch.randn(1, 1024, 512)
+video_tokens = torch.randn(2, 1024, 512)
 
-audio_tokens = torch.randn(1, 256, 384)
+audio_tokens = torch.randn(2, 256, 384)
 
 # forward
 

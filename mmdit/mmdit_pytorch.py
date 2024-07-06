@@ -192,6 +192,7 @@ class MMDiTBlock(Module):
             to_cond_linear = nn.Linear(dim_cond, sum(self.cond_dims))
 
             self.to_cond = nn.Sequential(
+                Rearrange('b d -> b 1 d'),
                 nn.SiLU(),
                 to_cond_linear
             )

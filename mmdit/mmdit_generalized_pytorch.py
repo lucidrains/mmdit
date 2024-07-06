@@ -46,6 +46,7 @@ class AdaptiveLayerNorm(Module):
             cond_linear = nn.Linear(dim_cond, dim * 2)
 
             self.to_cond = nn.Sequential(
+                Rearrange('b d -> b 1 d'),
                 nn.SiLU(),
                 cond_linear
             )
@@ -98,6 +99,7 @@ class MMDiTBlock(Module):
             cond_linear = nn.Linear(dim_cond, sum(dim_modalities) * 2)
 
             self.to_post_branch_gammas = nn.Sequential(
+                Rearrange('b d -> b 1 d'),
                 nn.SiLU(),
                 cond_linear
             )
