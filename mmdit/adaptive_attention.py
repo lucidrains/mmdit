@@ -13,6 +13,9 @@ from einops.layers.torch import Rearrange
 def exists(v):
     return v is not None
 
+def softclamp(t, value):
+    return (t / value).tanh() * value
+
 Linear = partial(nn.Linear, bias = False)
 
 # class
@@ -24,7 +27,9 @@ class AdaptiveAttention(Module):
         dim,
         dim_head = 64,
         heads = 8,
-        num_adaptive_weights = 1 # 1 becomes regular self attention with no gating
+        num_adaptive_weights = 1, # 1 becomes regular self attention with no gating
+        softclamp = False,
+        softclamp_value = 50.,
     ):
         """
         this idea was inspired by adaptive convs from gigagan https://arxiv.org/abs/2303.05511
@@ -46,6 +51,8 @@ class AdaptiveAttention(Module):
         dim_inner = dim_head * heads
         scale = dim_head ** -0.5
         self.scale = scale
+        self.softclamp = softclamp
+        self.softclamp_value = softclamp_value
 
         self.to_qkv = nn.Sequential(
             Linear(dim, dim_inner * num_adaptive_weights * 3),
@@ -89,6 +96,9 @@ class AdaptiveAttention(Module):
 
         q = q * self.scale
         sim = einsum(q, k, 'b h i d, b h j d -> b h i j')
+
+        if self.softclamp:
+            sim = softclamp(sim, self.softclamp_value)
 
         if exists(mask):
             mask = rearrange(mask, 'b j -> b 1 1 j')

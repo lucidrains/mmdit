@@ -84,6 +84,8 @@ class MMDiTBlock(Module):
         heads = 8,
         qk_rmsnorm = False,
         flash_attn = False,
+        softclamp = False,
+        softclamp_value = 50.,
         ff_kwargs: dict = dict()
     ):
         super().__init__()
@@ -117,7 +119,9 @@ class MMDiTBlock(Module):
             dim_inputs = dim_modalities,
             dim_head = dim_head,
             heads = heads,
-            flash = flash_attn
+            flash = flash_attn,
+            softclamp = softclamp,
+            softclamp_value = softclamp_value,
         )
 
         # feedforwards

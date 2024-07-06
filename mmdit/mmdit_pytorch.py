@@ -24,6 +24,9 @@ def exists(v):
 def default(v, d):
     return v if exists(v) else d
 
+def softclamp(t, value):
+    return (t / value).tanh() * value
+
 # rmsnorm
 
 class MultiHeadRMSNorm(Module):
@@ -47,6 +50,8 @@ class JointAttention(Module):
         heads = 8,
         qk_rmsnorm = False,
         flash = False,
+        softclamp = False,
+        softclamp_value = 50.,
         attend_kwargs: dict = dict()
     ):
         super().__init__()
@@ -70,6 +75,8 @@ class JointAttention(Module):
 
         self.attend = Attend(
             flash = flash,
+            softclamp_logits = softclamp,
+            logit_softclamp_value = softclamp_value,
             **attend_kwargs
         )
 
