@@ -47,9 +47,11 @@ class AdaptiveAttention(Module):
 
         has_gating = num_adaptive_weights > 1
         self.has_gating = has_gating
+        self.num_adaptive_weights = num_adaptive_weights
 
         dim_inner = dim_head * heads
         scale = dim_head ** -0.5
+
         self.scale = scale
         self.softclamp = softclamp
         self.softclamp_value = softclamp_value
@@ -61,15 +63,12 @@ class AdaptiveAttention(Module):
 
         if has_gating:
             self.to_gates = nn.Sequential(
-                Linear(dim, num_adaptive_weights),
+                Linear(dim, num_adaptive_weights * heads),
+                Rearrange('b n (h w) -> b h n 1 w', w = num_adaptive_weights),
                 nn.Softmax(dim = -1)
             )
 
-        self.to_out = nn.Sequential(
-            Rearrange('b h n d -> b n (h d)'),
-            Linear(dim_inner, dim * num_adaptive_weights),
-            Rearrange('b n (d w) -> b n d w', w = num_adaptive_weights)
-        )        
+        self.to_out_weights = nn.Parameter(torch.randn(heads, dim_head, dim * num_adaptive_weights))
 
     def forward(
         self,
@@ -84,9 +83,7 @@ class AdaptiveAttention(Module):
 
         if has_gating:
             gates = self.to_gates(x)
-            qkv_gates = rearrange(gates, 'b n w -> b 1 n 1 w')
-
-            qkv = reduce(qkv * qkv_gates, '... w -> ...', 'sum')
+            qkv = reduce(qkv * gates, '... w -> ...', 'sum')
         else:
             qkv = rearrange(qkv, '... 1 -> ...')
 
@@ -111,13 +108,13 @@ class AdaptiveAttention(Module):
         # again, adaptive weight on the outward projection
         # with gates from above
 
-        out = self.to_out(out)
+        out = einsum(out, self.to_out_weights, 'b h n d, h d e -> b h n e')
 
         if has_gating:
-            out_gates = rearrange(gates, 'b n w -> b n 1 w')
-            out = reduce(out * out_gates, '... w -> ...', 'sum')
+            out = rearrange(out, '... (d w) -> ... d w', w = self.num_adaptive_weights)
+            out = reduce(out * gates, '... w -> ...', 'sum')
         else:
-            out = rearrange(out, '... 1 -> ...')
+            out = rearrange(out, 'b h n d -> b n (h d)')
 
         return out
 
