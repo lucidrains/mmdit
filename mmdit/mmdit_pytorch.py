@@ -291,8 +291,8 @@ class MMDiTBlock(Module):
         text_tokens_residual = text_tokens
         image_tokens_residual = image_tokens
 
-        text_tokens = self.text_attn_layernorm(text_tokens)
-        image_tokens = self.image_attn_layernorm(image_tokens)
+        text_tokens = self.text_ff_layernorm(text_tokens)
+        image_tokens = self.image_ff_layernorm(image_tokens)
 
         if self.has_cond:
             text_tokens = text_tokens * text_pre_ff_gamma + text_pre_ff_beta
