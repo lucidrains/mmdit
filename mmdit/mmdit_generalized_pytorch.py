@@ -19,6 +19,11 @@ from mmdit.mmdit_pytorch import (
     JointAttention
 )
 
+from hyper_connections import (
+    HyperConnections,
+    Residual
+)
+
 # helpers
 
 def exists(v):
@@ -78,7 +83,7 @@ class MMDiTBlock(Module):
         self,
         *,
         dim_joint_attn,
-        dim_modalities: Tuple[int, ...],
+        dim_modalities: tuple[int, ...],
         dim_cond = None,
         dim_head = 64,
         heads = 8,
@@ -86,11 +91,19 @@ class MMDiTBlock(Module):
         flash_attn = False,
         softclamp = False,
         softclamp_value = 50.,
+        num_residual_streams = 1,
         ff_kwargs: dict = dict()
     ):
         super().__init__()
         self.num_modalities = len(dim_modalities)
         self.dim_modalities = dim_modalities
+
+        # residuals / maybe hyper connections
+
+        residual_klass = Residual if num_residual_streams == 1 else HyperConnections
+
+        self.attn_residual_fns = ModuleList([residual_klass(num_residual_streams, dim = dim) for dim in dim_modalities])
+        self.ff_residual_fns = ModuleList([residual_klass(num_residual_streams, dim = dim) for dim in dim_modalities])
 
         # handle optional time conditioning
 
@@ -135,8 +148,8 @@ class MMDiTBlock(Module):
     def forward(
         self,
         *,
-        modality_tokens: Tuple[Tensor, ...],
-        modality_masks: Tuple[Tensor | None, ...] | None = None,
+        modality_tokens: tuple[Tensor, ...],
+        modality_masks: tuple[Tensor | None, ...] | None = None,
         time_cond = None
     ):
         assert len(modality_tokens) == self.num_modalities
@@ -152,7 +165,7 @@ class MMDiTBlock(Module):
 
         # attention layernorms
 
-        modality_tokens_residual = modality_tokens
+        modality_tokens, modality_tokens_residual_fns = tuple(zip(*[residual_fn(modality_token) for residual_fn, modality_token in zip(self.attn_residual_fns, modality_tokens)]))
 
         modality_tokens = [ln(tokens, **ln_kwargs) for tokens, ln in zip(modality_tokens, self.attn_layernorms)]
 
@@ -168,11 +181,11 @@ class MMDiTBlock(Module):
 
         # add attention residual
 
-        modality_tokens = [(tokens + residual) for tokens, residual in zip(modality_tokens, modality_tokens_residual)]
+        modality_tokens = [add_attn_residual(tokens) for add_attn_residual, tokens in zip(modality_tokens_residual_fns, modality_tokens)]
 
         # handle feedforward adaptive layernorm
 
-        modality_tokens_residual = modality_tokens
+        modality_tokens, modality_tokens_residual_fns = tuple(zip(*[residual_fn(modality_token) for residual_fn, modality_token in zip(self.ff_residual_fns, modality_tokens)]))
 
         modality_tokens = [ln(tokens, **ln_kwargs) for tokens, ln in zip(modality_tokens, self.ff_layernorms)]
 
@@ -186,7 +199,7 @@ class MMDiTBlock(Module):
 
         # add feedforward residual
 
-        modality_tokens = [(tokens + residual) for tokens, residual in zip(modality_tokens, modality_tokens_residual)]
+        modality_tokens = [add_residual_fn(tokens) for add_residual_fn, tokens in zip(modality_tokens_residual_fns, modality_tokens)]
 
         # returns
 
@@ -201,10 +214,14 @@ class MMDiT(Module):
         depth,
         dim_modalities,
         final_norms = True,
+        num_residual_streams = 4,
         **block_kwargs
     ):
         super().__init__()
-        blocks = [MMDiTBlock(dim_modalities = dim_modalities, **block_kwargs) for _ in range(depth)]
+
+        self.expand_streams, self.reduce_streams = HyperConnections.get_expand_reduce_stream_functions(num_residual_streams, disable = num_residual_streams == 1)
+
+        blocks = [MMDiTBlock(dim_modalities = dim_modalities, num_residual_streams = num_residual_streams, **block_kwargs) for _ in range(depth)]
         self.blocks = ModuleList(blocks)
 
         norms = [RMSNorm(dim) for dim in dim_modalities]
@@ -213,16 +230,21 @@ class MMDiT(Module):
     def forward(
         self,
         *,
-        modality_tokens: Tuple[Tensor, ...],
-        modality_masks: Tuple[Tensor | None, ...] | None = None,
+        modality_tokens: tuple[Tensor, ...],
+        modality_masks: tuple[Tensor | None, ...] | None = None,
         time_cond = None
     ):
+
+        modality_tokens = [self.expand_streams(modality) for modality in modality_tokens]
+
         for block in self.blocks:
             modality_tokens = block(
                 time_cond = time_cond,
                 modality_tokens = modality_tokens,
                 modality_masks = modality_masks
             )
+
+        modality_tokens = [self.reduce_streams(modality) for modality in modality_tokens]
 
         modality_tokens = [norm(tokens) for tokens, norm in zip(modality_tokens, self.norms)]
 
