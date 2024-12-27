@@ -16,6 +16,11 @@ from x_transformers import (
     FeedForward
 )
 
+from hyper_connections import (
+    HyperConnections,
+    Residual
+)
+
 # helpers
 
 def exists(v):
@@ -45,7 +50,7 @@ class JointAttention(Module):
         self,
         *,
         dim,
-        dim_inputs: Tuple[int, ...],
+        dim_inputs: tuple[int, ...],
         dim_head = 64,
         heads = 8,
         qk_rmsnorm = False,
@@ -96,8 +101,8 @@ class JointAttention(Module):
 
     def forward(
         self,
-        inputs: Tuple[Tensor],
-        masks: Tuple[Tensor | None] | None = None
+        inputs: tuple[Tensor],
+        masks: tuple[Tensor | None] | None = None
     ):
 
         device = self.dummy.device
@@ -174,9 +179,20 @@ class MMDiTBlock(Module):
         heads = 8,
         qk_rmsnorm = False,
         flash_attn = False,
+        num_residual_streams = 1,
         ff_kwargs: dict = dict()
     ):
         super().__init__()
+
+        # residual functions / maybe hyper connections
+
+        residual_klass = Residual if num_residual_streams == 1 else HyperConnections
+
+        self.text_attn_residual_fn = residual_klass(num_residual_streams, dim = dim_text)
+        self.text_ff_residual_fn = residual_klass(num_residual_streams, dim = dim_text)
+
+        self.image_attn_residual_fn = residual_klass(num_residual_streams, dim = dim_image)
+        self.image_ff_residual_fn = residual_klass(num_residual_streams, dim = dim_image)
 
         # handle optional time conditioning
 
@@ -258,8 +274,8 @@ class MMDiTBlock(Module):
 
         # handle attn adaptive layernorm
 
-        text_tokens_residual = text_tokens
-        image_tokens_residual = image_tokens
+        text_tokens, add_text_residual = self.text_attn_residual_fn(text_tokens)
+        image_tokens, add_image_residual = self.image_attn_residual_fn(image_tokens)
 
         text_tokens = self.text_attn_layernorm(text_tokens)
         image_tokens = self.image_attn_layernorm(image_tokens)
@@ -283,19 +299,22 @@ class MMDiTBlock(Module):
 
         # add attention residual
 
-        text_tokens = text_tokens + text_tokens_residual
-        image_tokens = image_tokens + image_tokens_residual
+        text_tokens = add_text_residual(text_tokens)
+        image_tokens = add_image_residual(image_tokens)
 
         # handle feedforward adaptive layernorm
 
-        text_tokens_residual = text_tokens
-        image_tokens_residual = image_tokens
+        if not skip_feedforward_text_tokens:
+            text_tokens, add_text_residual = self.text_ff_residual_fn(text_tokens)
+            text_tokens = self.text_ff_layernorm(text_tokens)
 
-        text_tokens = self.text_ff_layernorm(text_tokens)
+            if self.has_cond:
+                text_tokens = text_tokens * text_pre_ff_gamma + text_pre_ff_beta
+
+        image_tokens, add_image_residual = self.image_ff_residual_fn(image_tokens)
         image_tokens = self.image_ff_layernorm(image_tokens)
 
         if self.has_cond:
-            text_tokens = text_tokens * text_pre_ff_gamma + text_pre_ff_beta
             image_tokens = image_tokens * image_pre_ff_gamma + image_pre_ff_beta
 
         # images feedforward
@@ -309,7 +328,7 @@ class MMDiTBlock(Module):
 
         # images feedforward residual
 
-        image_tokens = image_tokens + image_tokens_residual
+        image_tokens = add_image_residual(image_tokens)
 
         # early return, for last block in mmdit
 
@@ -327,7 +346,7 @@ class MMDiTBlock(Module):
 
         # text feedforward residual
 
-        text_tokens = text_tokens + text_tokens_residual
+        text_tokens = add_text_residual(text_tokens)
 
         # return
 
@@ -343,9 +362,12 @@ class MMDiT(Module):
         dim_image,
         num_register_tokens = 0,
         final_norm = True,
+        num_residual_streams = 4,
         **block_kwargs
     ):
         super().__init__()
+
+        self.expand_streams, self.reduce_streams = HyperConnections.get_expand_reduce_stream_functions(num_residual_streams, disable = num_residual_streams == 1)
 
         self.has_register_tokens = num_register_tokens > 0
         self.register_tokens = nn.Parameter(torch.zeros(num_register_tokens, dim_image))
@@ -356,6 +378,7 @@ class MMDiT(Module):
         for _ in range(depth):
             block = MMDiTBlock(
                 dim_image = dim_image,
+                num_residual_streams = num_residual_streams,
                 **block_kwargs
             )
 
@@ -377,6 +400,9 @@ class MMDiT(Module):
             register_tokens = repeat(self.register_tokens, 'n d -> b n d', b = image_tokens.shape[0])
             image_tokens, packed_shape = pack([register_tokens, image_tokens], 'b * d')
 
+        text_tokens = self.expand_streams(text_tokens)
+        image_tokens = self.expand_streams(image_tokens)
+
         for ind, block in enumerate(self.blocks):
             is_last = ind == (len(self.blocks) - 1)
 
@@ -390,6 +416,9 @@ class MMDiT(Module):
 
         if self.has_register_tokens:
             _, image_tokens = unpack(image_tokens, packed_shape, 'b * d')
+
+        text_tokens = self.reduce_streams(text_tokens)
+        image_tokens = self.reduce_streams(image_tokens)
 
         image_tokens = self.norm(image_tokens)
 
