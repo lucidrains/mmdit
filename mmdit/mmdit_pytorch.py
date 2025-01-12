@@ -49,7 +49,6 @@ class JointAttention(Module):
     def __init__(
         self,
         *,
-        dim,
         dim_inputs: tuple[int, ...],
         dim_head = 64,
         heads = 8,
@@ -171,7 +170,6 @@ class MMDiTBlock(Module):
     def __init__(
         self,
         *,
-        dim_joint_attn,
         dim_text,
         dim_image,
         dim_cond = None,
@@ -235,7 +233,6 @@ class MMDiTBlock(Module):
         # attention and feedforward
 
         self.joint_attn = JointAttention(
-            dim = dim_joint_attn,
             dim_inputs = (dim_text, dim_image),
             dim_head = dim_head,
             heads = heads,

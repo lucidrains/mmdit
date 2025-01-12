@@ -82,7 +82,6 @@ class MMDiTBlock(Module):
     def __init__(
         self,
         *,
-        dim_joint_attn,
         dim_modalities: tuple[int, ...],
         dim_cond = None,
         dim_head = 64,
@@ -128,7 +127,6 @@ class MMDiTBlock(Module):
         self.attn_layernorms = ModuleList(attention_layernorms)
 
         self.joint_attn = JointAttention(
-            dim = dim_joint_attn,
             dim_inputs = dim_modalities,
             dim_head = dim_head,
             heads = heads,

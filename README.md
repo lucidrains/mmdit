@@ -23,7 +23,6 @@ from mmdit import MMDiTBlock
 # define mm dit block
 
 block = MMDiTBlock(
-    dim_joint_attn = 512,
     dim_cond = 256,
     dim_text = 768,
     dim_image = 512,
@@ -58,7 +57,6 @@ from mmdit.mmdit_generalized_pytorch import MMDiT
 mmdit = MMDiT(
     depth = 2, 
     dim_modalities = (768, 512, 384),
-    dim_joint_attn = 512,
     dim_cond = 256,
     qk_rmsnorm = True
 )
