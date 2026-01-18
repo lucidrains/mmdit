@@ -19,8 +19,8 @@ from mmdit.mmdit_pytorch import (
     JointAttention
 )
 
-from hyper_connections import (
-    HyperConnections,
+from hyper_connections.mHCv2 import (
+    ManifoldConstrainedHyperConnections,
     Residual
 )
 
@@ -99,7 +99,7 @@ class MMDiTBlock(Module):
 
         # residuals / maybe hyper connections
 
-        residual_klass = Residual if num_residual_streams == 1 else HyperConnections
+        residual_klass = Residual if num_residual_streams == 1 else ManifoldConstrainedHyperConnections
 
         self.attn_residual_fns = ModuleList([residual_klass(num_residual_streams, dim = dim) for dim in dim_modalities])
         self.ff_residual_fns = ModuleList([residual_klass(num_residual_streams, dim = dim) for dim in dim_modalities])
@@ -213,11 +213,12 @@ class MMDiT(Module):
         dim_modalities,
         final_norms = True,
         num_residual_streams = 4,
+        mhc_kwargs: dict = dict(),
         **block_kwargs
     ):
         super().__init__()
 
-        self.expand_streams, self.reduce_streams = HyperConnections.get_expand_reduce_stream_functions(num_residual_streams, disable = num_residual_streams == 1)
+        self.expand_streams, self.reduce_streams = ManifoldConstrainedHyperConnections.get_expand_reduce_stream_functions(num_residual_streams, disable = num_residual_streams == 1, **mhc_kwargs)
 
         blocks = [MMDiTBlock(dim_modalities = dim_modalities, num_residual_streams = num_residual_streams, **block_kwargs) for _ in range(depth)]
         self.blocks = ModuleList(blocks)

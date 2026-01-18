@@ -1,6 +1,6 @@
 [project]
 name = "mmdit"
-version = "0.2.2"
+version = "0.3.0"
 description = "MMDiT"
 authors = [
     { name = "Phil Wang", email = "lucidrains@gmail.com" }
@@ -24,9 +24,9 @@ classifiers=[
 ]
 
 dependencies = [
-    "einops>=0.8.0",
-    "hyper-connections>=0.0.15",
-    "torch>=2.0",
+    "einops>=0.8.1",
+    "hyper-connections>=0.4.6",
+    "torch>=2.4",
     "x-transformers>=1.31.9"
 ]
 
